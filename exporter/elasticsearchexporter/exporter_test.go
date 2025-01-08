@@ -30,6 +30,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/config"
 )
 
 func TestExporterLogs(t *testing.T) {
@@ -59,7 +61,7 @@ func TestExporterLogs(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "ecs"
 		})
 		logs := newLogsWithAttributes(
@@ -160,7 +162,7 @@ func TestExporterLogs(t *testing.T) {
 					return itemsAllOK(docs)
 				})
 
-				exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+				exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 					cfg.Mapping.Mode = "bodymap"
 				})
 				logs := plog.NewLogs()
@@ -197,7 +199,7 @@ func TestExporterLogs(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "bodymap"
 		})
 
@@ -217,7 +219,7 @@ func TestExporterLogs(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "ecs"
 			cfg.Mapping.Dedot = true
 		})
@@ -238,7 +240,7 @@ func TestExporterLogs(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "raw"
 			// dedup is the default
 		})
@@ -269,7 +271,7 @@ func TestExporterLogs(t *testing.T) {
 			}
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Headers = map[string]configopaque.String{"foo": "bah"}
 		})
 		mustSendLogRecords(t, exporter, plog.NewLogRecord())
@@ -290,7 +292,7 @@ func TestExporterLogs(t *testing.T) {
 			}
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Headers = map[string]configopaque.String{"User-Agent": "overridden"}
 		})
 		mustSendLogRecords(t, exporter, plog.NewLogRecord())
@@ -314,7 +316,7 @@ func TestExporterLogs(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.LogsIndex = index
 			cfg.LogsDynamicIndex.Enabled = true
 		})
@@ -345,7 +347,7 @@ func TestExporterLogs(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.LogsDynamicIndex.Enabled = true
 		})
 		logs := newLogsWithAttributes(
@@ -374,7 +376,7 @@ func TestExporterLogs(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.LogstashFormat.Enabled = true
 			cfg.LogsIndex = "not-used-index"
 		})
@@ -399,7 +401,7 @@ func TestExporterLogs(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.LogsIndex = index
 			cfg.LogsDynamicIndex.Enabled = true
 			cfg.LogstashFormat.Enabled = true
@@ -482,7 +484,7 @@ func TestExporterLogs(t *testing.T) {
 				return itemsAllOK(docs)
 			})
 
-			exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+			exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 				cfg.LogsDynamicIndex.Enabled = true
 				cfg.Mapping.Mode = "otel"
 			})
@@ -536,8 +538,8 @@ func TestExporterLogs(t *testing.T) {
 	})
 
 	t.Run("no retry", func(t *testing.T) {
-		configurations := map[string]func(*Config){
-			"retry.enabled is false": func(cfg *Config) {
+		configurations := map[string]func(*config.Config){
+			"retry.enabled is false": func(cfg *config.Config) {
 				cfg.Retry.Enabled = false
 				cfg.Retry.RetryOnStatus = []int{429}
 				cfg.Retry.MaxRetries = 10
@@ -662,7 +664,7 @@ func TestExporterLogs(t *testing.T) {
 			return resp, nil
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Flush.Interval = 50 * time.Millisecond
 			cfg.Retry.InitialInterval = 1 * time.Millisecond
 			cfg.Retry.MaxInterval = 10 * time.Millisecond
@@ -685,7 +687,7 @@ func TestExporterLogs(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "otel"
 		})
 
@@ -713,7 +715,7 @@ func TestExporterLogs(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestLogsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestLogsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "otel"
 		})
 
@@ -744,7 +746,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "ecs"
 		})
 		dp := pmetric.NewNumberDataPoint()
@@ -767,7 +769,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.MetricsIndex = "metrics.index"
 			cfg.Mapping.Mode = "ecs"
 		})
@@ -799,7 +801,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.MetricsIndex = "metrics.index"
 			cfg.Mapping.Mode = "ecs"
 		})
@@ -826,7 +828,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.MetricsIndex = "metrics.index"
 			cfg.Mapping.Mode = "ecs"
 		})
@@ -929,7 +931,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "ecs"
 		})
 
@@ -973,7 +975,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "ecs"
 		})
 
@@ -1012,7 +1014,7 @@ func TestExporterMetrics(t *testing.T) {
 			return nil, nil
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "ecs"
 		})
 
@@ -1039,7 +1041,7 @@ func TestExporterMetrics(t *testing.T) {
 			return nil, nil
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "ecs"
 		})
 
@@ -1071,7 +1073,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "ecs"
 		})
 
@@ -1123,7 +1125,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "otel"
 		})
 
@@ -1192,7 +1194,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "otel"
 		})
 
@@ -1220,7 +1222,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "otel"
 		})
 
@@ -1261,7 +1263,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "otel"
 		})
 
@@ -1315,7 +1317,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "otel"
 		})
 
@@ -1354,7 +1356,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "otel"
 		})
 
@@ -1383,7 +1385,7 @@ func TestExporterMetrics(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestMetricsExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestMetricsExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "ecs"
 		})
 
@@ -1460,7 +1462,7 @@ func TestExporterTraces(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestTracesExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestTracesExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.TracesIndex = index
 			cfg.TracesDynamicIndex.Enabled = true
 		})
@@ -1491,7 +1493,7 @@ func TestExporterTraces(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestTracesExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestTracesExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.TracesDynamicIndex.Enabled = true
 		})
 
@@ -1509,7 +1511,7 @@ func TestExporterTraces(t *testing.T) {
 	})
 
 	t.Run("publish with logstash format index", func(t *testing.T) {
-		var defaultCfg Config
+		var defaultCfg config.Config
 
 		rec := newBulkRecorder()
 		server := newESTestServer(t, func(docs []itemRequest) ([]itemResponse, error) {
@@ -1520,7 +1522,7 @@ func TestExporterTraces(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestTracesExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestTracesExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.LogstashFormat.Enabled = true
 			cfg.TracesIndex = "not-used-index"
 			defaultCfg = *cfg
@@ -1548,7 +1550,7 @@ func TestExporterTraces(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestTracesExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestTracesExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.TracesIndex = index
 			cfg.TracesDynamicIndex.Enabled = true
 			cfg.LogstashFormat.Enabled = true
@@ -1574,7 +1576,7 @@ func TestExporterTraces(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestTracesExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestTracesExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.TracesDynamicIndex.Enabled = true
 			cfg.Mapping.Mode = "otel"
 		})
@@ -1643,7 +1645,7 @@ func TestExporterTraces(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestTracesExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestTracesExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "otel"
 		})
 
@@ -1678,7 +1680,7 @@ func TestExporterTraces(t *testing.T) {
 			return itemsAllOK(docs)
 		})
 
-		exporter := newTestTracesExporter(t, server.URL, func(cfg *Config) {
+		exporter := newTestTracesExporter(t, server.URL, func(cfg *config.Config) {
 			cfg.Mapping.Mode = "otel"
 		})
 
@@ -1706,7 +1708,7 @@ func TestExporterTraces(t *testing.T) {
 func TestExporterAuth(t *testing.T) {
 	done := make(chan struct{}, 1)
 	testauthID := component.NewID(component.MustNewType("authtest"))
-	exporter := newUnstartedTestLogsExporter(t, "http://testing.invalid", func(cfg *Config) {
+	exporter := newUnstartedTestLogsExporter(t, "http://testing.invalid", func(cfg *config.Config) {
 		cfg.Auth = &configauth.Authentication{AuthenticatorID: testauthID}
 	})
 	err := exporter.Start(context.Background(), &mockHost{
@@ -1735,8 +1737,8 @@ func TestExporterBatcher(t *testing.T) {
 	var requests []*http.Request
 	testauthID := component.NewID(component.MustNewType("authtest"))
 	batcherEnabled := false // sync bulk indexer is used without batching
-	exporter := newUnstartedTestLogsExporter(t, "http://testing.invalid", func(cfg *Config) {
-		cfg.Batcher = BatcherConfig{Enabled: &batcherEnabled}
+	exporter := newUnstartedTestLogsExporter(t, "http://testing.invalid", func(cfg *config.Config) {
+		cfg.Batcher = config.BatcherConfig{Enabled: &batcherEnabled}
 		cfg.Auth = &configauth.Authentication{AuthenticatorID: testauthID}
 	})
 	err := exporter.Start(context.Background(), &mockHost{
@@ -1768,9 +1770,9 @@ func TestExporterBatcher(t *testing.T) {
 	assert.Equal(t, "value2", requests[1].Context().Value(key{}))
 }
 
-func newTestTracesExporter(t *testing.T, url string, fns ...func(*Config)) exporter.Traces {
+func newTestTracesExporter(t *testing.T, url string, fns ...func(*config.Config)) exporter.Traces {
 	f := NewFactory()
-	cfg := withDefaultConfig(append([]func(*Config){func(cfg *Config) {
+	cfg := config.WithDefaultConfig(append([]func(*config.Config){func(cfg *config.Config) {
 		cfg.Endpoints = []string{url}
 		cfg.NumWorkers = 1
 		cfg.Flush.Interval = 10 * time.Millisecond
@@ -1786,9 +1788,9 @@ func newTestTracesExporter(t *testing.T, url string, fns ...func(*Config)) expor
 	return exp
 }
 
-func newTestMetricsExporter(t *testing.T, url string, fns ...func(*Config)) exporter.Metrics {
+func newTestMetricsExporter(t *testing.T, url string, fns ...func(*config.Config)) exporter.Metrics {
 	f := NewFactory()
-	cfg := withDefaultConfig(append([]func(*Config){func(cfg *Config) {
+	cfg := config.WithDefaultConfig(append([]func(*config.Config){func(cfg *config.Config) {
 		cfg.Endpoints = []string{url}
 		cfg.NumWorkers = 1
 		cfg.Flush.Interval = 10 * time.Millisecond
@@ -1804,7 +1806,7 @@ func newTestMetricsExporter(t *testing.T, url string, fns ...func(*Config)) expo
 	return exp
 }
 
-func newTestLogsExporter(t *testing.T, url string, fns ...func(*Config)) exporter.Logs {
+func newTestLogsExporter(t *testing.T, url string, fns ...func(*config.Config)) exporter.Logs {
 	exp := newUnstartedTestLogsExporter(t, url, fns...)
 	err := exp.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -1814,9 +1816,9 @@ func newTestLogsExporter(t *testing.T, url string, fns ...func(*Config)) exporte
 	return exp
 }
 
-func newUnstartedTestLogsExporter(t *testing.T, url string, fns ...func(*Config)) exporter.Logs {
+func newUnstartedTestLogsExporter(t *testing.T, url string, fns ...func(*config.Config)) exporter.Logs {
 	f := NewFactory()
-	cfg := withDefaultConfig(append([]func(*Config){func(cfg *Config) {
+	cfg := config.WithDefaultConfig(append([]func(*config.Config){func(cfg *config.Config) {
 		cfg.Endpoints = []string{url}
 		cfg.NumWorkers = 1
 		cfg.Flush.Interval = 10 * time.Millisecond

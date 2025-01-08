@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/lestrrat-go/strftime"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/config"
 )
 
-func generateIndexWithLogstashFormat(index string, conf *LogstashFormatSettings, t time.Time) (string, error) {
+func generateIndexWithLogstashFormat(index string, conf *config.LogstashFormatSettings, t time.Time) (string, error) {
 	if conf.Enabled {
 		partIndex := fmt.Sprintf("%s%s", index, conf.PrefixSeparator)
 		var buf bytes.Buffer

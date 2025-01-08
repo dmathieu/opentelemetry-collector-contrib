@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.uber.org/zap"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/config"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/common/sanitize"
 )
 
@@ -85,12 +86,12 @@ func (cl *clientLogger) ResponseBodyEnabled() bool {
 // newElasticsearchClient returns a new elasticsearch.Client
 func newElasticsearchClient(
 	ctx context.Context,
-	config *Config,
+	cfg *config.Config,
 	host component.Host,
 	telemetry component.TelemetrySettings,
 	userAgent string,
 ) (*elasticsearch.Client, error) {
-	httpClient, err := config.ClientConfig.ToClient(ctx, host, telemetry)
+	httpClient, err := cfg.ClientConfig.ToClient(ctx, host, telemetry)
 	if err != nil {
 		return nil, err
 	}
@@ -100,20 +101,20 @@ func newElasticsearchClient(
 
 	// endpoints converts Config.Endpoints, Config.CloudID,
 	// and Config.ClientConfig.Endpoint to a list of addresses.
-	endpoints, err := config.endpoints()
+	endpoints, err := cfg.AllEndpoints()
 	if err != nil {
 		return nil, err
 	}
 
 	esLogger := clientLogger{
 		Logger:          telemetry.Logger,
-		logRequestBody:  config.LogRequestBody,
-		logResponseBody: config.LogResponseBody,
+		logRequestBody:  cfg.LogRequestBody,
+		logResponseBody: cfg.LogResponseBody,
 	}
 
 	maxRetries := defaultMaxRetries
-	if config.Retry.MaxRetries != 0 {
-		maxRetries = config.Retry.MaxRetries
+	if cfg.Retry.MaxRetries != 0 {
+		maxRetries = cfg.Retry.MaxRetries
 	}
 
 	return elasticsearch.NewClient(elasticsearch.Config{
@@ -121,22 +122,22 @@ func newElasticsearchClient(
 
 		// configure connection setup
 		Addresses: endpoints,
-		Username:  config.Authentication.User,
-		Password:  string(config.Authentication.Password),
-		APIKey:    string(config.Authentication.APIKey),
+		Username:  cfg.Authentication.User,
+		Password:  string(cfg.Authentication.Password),
+		APIKey:    string(cfg.Authentication.APIKey),
 		Header:    headers,
 
 		// configure retry behavior
-		RetryOnStatus:        config.Retry.RetryOnStatus,
-		DisableRetry:         !config.Retry.Enabled,
-		EnableRetryOnTimeout: config.Retry.Enabled,
+		RetryOnStatus:        cfg.Retry.RetryOnStatus,
+		DisableRetry:         !cfg.Retry.Enabled,
+		EnableRetryOnTimeout: cfg.Retry.Enabled,
 		// RetryOnError:  retryOnError, // should be used from esclient version 8 onwards
 		MaxRetries:   maxRetries,
-		RetryBackoff: createElasticsearchBackoffFunc(&config.Retry),
+		RetryBackoff: createElasticsearchBackoffFunc(&cfg.Retry),
 
 		// configure sniffing
-		DiscoverNodesOnStart:  config.Discovery.OnStart,
-		DiscoverNodesInterval: config.Discovery.Interval,
+		DiscoverNodesOnStart:  cfg.Discovery.OnStart,
+		DiscoverNodesInterval: cfg.Discovery.Interval,
 
 		// configure internal metrics reporting and logging
 		EnableMetrics:     false, // TODO
@@ -145,17 +146,17 @@ func newElasticsearchClient(
 	})
 }
 
-func createElasticsearchBackoffFunc(config *RetrySettings) func(int) time.Duration {
-	if !config.Enabled {
+func createElasticsearchBackoffFunc(cfg *config.RetrySettings) func(int) time.Duration {
+	if !cfg.Enabled {
 		return nil
 	}
 
 	expBackoff := backoff.NewExponentialBackOff()
-	if config.InitialInterval > 0 {
-		expBackoff.InitialInterval = config.InitialInterval
+	if cfg.InitialInterval > 0 {
+		expBackoff.InitialInterval = cfg.InitialInterval
 	}
-	if config.MaxInterval > 0 {
-		expBackoff.MaxInterval = config.MaxInterval
+	if cfg.MaxInterval > 0 {
+		expBackoff.MaxInterval = cfg.MaxInterval
 	}
 	expBackoff.Reset()
 

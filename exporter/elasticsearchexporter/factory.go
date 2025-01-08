@@ -7,98 +7,26 @@ package elasticsearchexporter // import "github.com/open-telemetry/opentelemetry
 
 import (
 	"context"
-	"net/http"
-	"time"
 
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configcompression"
-	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterbatcher"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/config"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/metadata"
-)
-
-const (
-	// The value of "type" key in configuration.
-	defaultLogsIndex    = "logs-generic-default"
-	defaultMetricsIndex = "metrics-generic-default"
-	defaultTracesIndex  = "traces-generic-default"
 )
 
 // NewFactory creates a factory for Elastic exporter.
 func NewFactory() exporter.Factory {
 	return exporter.NewFactory(
 		metadata.Type,
-		createDefaultConfig,
+		config.CreateDefaultConfig,
 		exporter.WithLogs(createLogsExporter, metadata.LogsStability),
 		exporter.WithMetrics(createMetricsExporter, metadata.MetricsStability),
 		exporter.WithTraces(createTracesExporter, metadata.TracesStability),
 	)
-}
-
-func createDefaultConfig() component.Config {
-	qs := exporterhelper.NewDefaultQueueConfig()
-	qs.Enabled = false
-
-	httpClientConfig := confighttp.NewDefaultClientConfig()
-	httpClientConfig.Timeout = 90 * time.Second
-	httpClientConfig.Compression = configcompression.TypeGzip
-
-	return &Config{
-		QueueSettings: qs,
-		ClientConfig:  httpClientConfig,
-		Index:         "",
-		LogsIndex:     defaultLogsIndex,
-		LogsDynamicIndex: DynamicIndexSetting{
-			Enabled: false,
-		},
-		MetricsIndex: defaultMetricsIndex,
-		MetricsDynamicIndex: DynamicIndexSetting{
-			Enabled: true,
-		},
-		TracesIndex: defaultTracesIndex,
-		TracesDynamicIndex: DynamicIndexSetting{
-			Enabled: false,
-		},
-		Retry: RetrySettings{
-			Enabled:         true,
-			MaxRetries:      0, // default is set in exporter code
-			InitialInterval: 100 * time.Millisecond,
-			MaxInterval:     1 * time.Minute,
-			RetryOnStatus: []int{
-				http.StatusTooManyRequests,
-			},
-		},
-		Mapping: MappingsSettings{
-			Mode:  "none",
-			Dedot: true,
-		},
-		LogstashFormat: LogstashFormatSettings{
-			Enabled:         false,
-			PrefixSeparator: "-",
-			DateFormat:      "%Y.%m.%d",
-		},
-		TelemetrySettings: TelemetrySettings{
-			LogRequestBody:  false,
-			LogResponseBody: false,
-		},
-		Batcher: BatcherConfig{
-			FlushTimeout: 30 * time.Second,
-			MinSizeConfig: exporterbatcher.MinSizeConfig{
-				MinSizeItems: 5000,
-			},
-			MaxSizeConfig: exporterbatcher.MaxSizeConfig{
-				MaxSizeItems: 0,
-			},
-		},
-		Flush: FlushSettings{
-			Bytes:    5e+6,
-			Interval: 30 * time.Second,
-		},
-	}
 }
 
 // createLogsExporter creates a new exporter for logs.
@@ -109,14 +37,14 @@ func createLogsExporter(
 	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Logs, error) {
-	cf := cfg.(*Config)
+	cf := cfg.(*config.Config)
 
 	index := cf.LogsIndex
 	if cf.Index != "" {
 		set.Logger.Warn("index option are deprecated and replaced with logs_index and traces_index.")
 		index = cf.Index
 	}
-	handleDeprecatedConfig(cf, set.Logger)
+	config.HandleDeprecatedConfig(cf, set.Logger)
 
 	exporter := newExporter(cf, set, index, cf.LogsDynamicIndex.Enabled)
 
@@ -134,8 +62,8 @@ func createMetricsExporter(
 	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Metrics, error) {
-	cf := cfg.(*Config)
-	handleDeprecatedConfig(cf, set.Logger)
+	cf := cfg.(*config.Config)
+	config.HandleDeprecatedConfig(cf, set.Logger)
 
 	exporter := newExporter(cf, set, cf.MetricsIndex, cf.MetricsDynamicIndex.Enabled)
 
@@ -152,8 +80,8 @@ func createTracesExporter(ctx context.Context,
 	set exporter.Settings,
 	cfg component.Config,
 ) (exporter.Traces, error) {
-	cf := cfg.(*Config)
-	handleDeprecatedConfig(cf, set.Logger)
+	cf := cfg.(*config.Config)
+	config.HandleDeprecatedConfig(cf, set.Logger)
 
 	exporter := newExporter(cf, set, cf.TracesIndex, cf.TracesDynamicIndex.Enabled)
 
@@ -167,7 +95,7 @@ func createTracesExporter(ctx context.Context,
 }
 
 func exporterhelperOptions(
-	cfg *Config,
+	cfg *config.Config,
 	start component.StartFunc,
 	shutdown component.ShutdownFunc,
 ) []exporterhelper.Option {

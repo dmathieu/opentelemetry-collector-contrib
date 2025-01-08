@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package elasticsearchexporter
+package config
 
 import (
 	"net/http"
@@ -26,14 +26,14 @@ import (
 func TestConfig(t *testing.T) {
 	t.Parallel()
 
-	defaultCfg := createDefaultConfig()
+	defaultCfg := CreateDefaultConfig()
 	defaultCfg.(*Config).Endpoints = []string{"https://elastic.example.com:9200"}
 
-	defaultLogstashFormatCfg := createDefaultConfig()
+	defaultLogstashFormatCfg := CreateDefaultConfig()
 	defaultLogstashFormatCfg.(*Config).Endpoints = []string{"http://localhost:9200"}
 	defaultLogstashFormatCfg.(*Config).LogstashFormat.Enabled = true
 
-	defaultRawCfg := createDefaultConfig()
+	defaultRawCfg := CreateDefaultConfig()
 	defaultRawCfg.(*Config).Endpoints = []string{"http://localhost:9200"}
 	defaultRawCfg.(*Config).Mapping.Mode = "raw"
 
@@ -75,7 +75,7 @@ func TestConfig(t *testing.T) {
 					Enabled: false,
 				},
 				Pipeline: "mypipeline",
-				ClientConfig: withDefaultHTTPClientConfig(func(cfg *confighttp.ClientConfig) {
+				ClientConfig: WithDefaultHTTPClientConfig(func(cfg *confighttp.ClientConfig) {
 					cfg.Timeout = 2 * time.Minute
 					cfg.MaxIdleConns = &defaultMaxIdleConns
 					cfg.IdleConnTimeout = &defaultIdleConnTimeout
@@ -147,7 +147,7 @@ func TestConfig(t *testing.T) {
 					Enabled: false,
 				},
 				Pipeline: "mypipeline",
-				ClientConfig: withDefaultHTTPClientConfig(func(cfg *confighttp.ClientConfig) {
+				ClientConfig: WithDefaultHTTPClientConfig(func(cfg *confighttp.ClientConfig) {
 					cfg.Timeout = 2 * time.Minute
 					cfg.MaxIdleConns = &defaultMaxIdleConns
 					cfg.IdleConnTimeout = &defaultIdleConnTimeout
@@ -219,7 +219,7 @@ func TestConfig(t *testing.T) {
 					Enabled: false,
 				},
 				Pipeline: "mypipeline",
-				ClientConfig: withDefaultHTTPClientConfig(func(cfg *confighttp.ClientConfig) {
+				ClientConfig: WithDefaultHTTPClientConfig(func(cfg *confighttp.ClientConfig) {
 					cfg.Timeout = 2 * time.Minute
 					cfg.MaxIdleConns = &defaultMaxIdleConns
 					cfg.IdleConnTimeout = &defaultIdleConnTimeout
@@ -280,14 +280,14 @@ func TestConfig(t *testing.T) {
 		{
 			id:         component.NewIDWithName(metadata.Type, "cloudid"),
 			configFile: "config.yaml",
-			expected: withDefaultConfig(func(cfg *Config) {
+			expected: WithDefaultConfig(func(cfg *Config) {
 				cfg.CloudID = "foo:YmFyLmNsb3VkLmVzLmlvJGFiYzEyMyRkZWY0NTY="
 			}),
 		},
 		{
 			id:         component.NewIDWithName(metadata.Type, "deprecated_index"),
 			configFile: "config.yaml",
-			expected: withDefaultConfig(func(cfg *Config) {
+			expected: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoints = []string{"https://elastic.example.com:9200"}
 				cfg.Index = "my_log_index"
 			}),
@@ -295,14 +295,14 @@ func TestConfig(t *testing.T) {
 		{
 			id:         component.NewIDWithName(metadata.Type, "confighttp_endpoint"),
 			configFile: "config.yaml",
-			expected: withDefaultConfig(func(cfg *Config) {
+			expected: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoint = "https://elastic.example.com:9200"
 			}),
 		},
 		{
 			id:         component.NewIDWithName(metadata.Type, "batcher_disabled"),
 			configFile: "config.yaml",
-			expected: withDefaultConfig(func(cfg *Config) {
+			expected: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoint = "https://elastic.example.com:9200"
 
 				enabled := false
@@ -312,7 +312,7 @@ func TestConfig(t *testing.T) {
 		{
 			id:         component.NewIDWithName(metadata.Type, "compression_none"),
 			configFile: "config.yaml",
-			expected: withDefaultConfig(func(cfg *Config) {
+			expected: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoint = "https://elastic.example.com:9200"
 
 				cfg.Compression = "none"
@@ -321,7 +321,7 @@ func TestConfig(t *testing.T) {
 		{
 			id:         component.NewIDWithName(metadata.Type, "compression_gzip"),
 			configFile: "config.yaml",
-			expected: withDefaultConfig(func(cfg *Config) {
+			expected: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoint = "https://elastic.example.com:9200"
 
 				cfg.Compression = "gzip"
@@ -331,10 +331,9 @@ func TestConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(strings.ReplaceAll(tt.id.String(), "/", "_"), func(t *testing.T) {
-			factory := NewFactory()
-			cfg := factory.CreateDefaultConfig()
+			cfg := CreateDefaultConfig()
 
-			cm, err := confmaptest.LoadConf(filepath.Join("testdata", tt.configFile))
+			cm, err := confmaptest.LoadConf(filepath.Join("../../testdata", tt.configFile))
 			require.NoError(t, err)
 
 			sub, err := cm.Sub(tt.id.String())
@@ -356,69 +355,69 @@ func TestConfig_Validate(t *testing.T) {
 		err    string
 	}{
 		"no endpoints": {
-			config: withDefaultConfig(),
+			config: WithDefaultConfig(),
 			err:    "exactly one of [endpoint, endpoints, cloudid] must be specified",
 		},
 		"empty endpoint": {
-			config: withDefaultConfig(func(cfg *Config) {
+			config: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoints = []string{""}
 			}),
 			err: `invalid endpoint "": endpoint must not be empty`,
 		},
 		"invalid endpoint": {
-			config: withDefaultConfig(func(cfg *Config) {
+			config: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoints = []string{"*:!"}
 			}),
 			err: `invalid endpoint "*:!": parse "*:!": first path segment in URL cannot contain colon`,
 		},
 		"invalid cloudid": {
-			config: withDefaultConfig(func(cfg *Config) {
+			config: WithDefaultConfig(func(cfg *Config) {
 				cfg.CloudID = "invalid"
 			}),
 			err: `invalid CloudID "invalid"`,
 		},
 		"invalid decoded cloudid": {
-			config: withDefaultConfig(func(cfg *Config) {
+			config: WithDefaultConfig(func(cfg *Config) {
 				cfg.CloudID = "foo:YWJj"
 			}),
 			err: `invalid decoded CloudID "abc"`,
 		},
 		"endpoints and cloudid both set": {
-			config: withDefaultConfig(func(cfg *Config) {
+			config: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoints = []string{"http://test:9200"}
 				cfg.CloudID = "foo:YmFyLmNsb3VkLmVzLmlvJGFiYzEyMyRkZWY0NTY="
 			}),
 			err: "exactly one of [endpoint, endpoints, cloudid] must be specified",
 		},
 		"endpoint and endpoints both set": {
-			config: withDefaultConfig(func(cfg *Config) {
+			config: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoint = "http://test:9200"
 				cfg.Endpoints = []string{"http://test:9200"}
 			}),
 			err: "exactly one of [endpoint, endpoints, cloudid] must be specified",
 		},
 		"invalid mapping mode": {
-			config: withDefaultConfig(func(cfg *Config) {
+			config: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoints = []string{"http://test:9200"}
 				cfg.Mapping.Mode = "invalid"
 			}),
 			err: `unknown mapping mode "invalid"`,
 		},
 		"invalid scheme": {
-			config: withDefaultConfig(func(cfg *Config) {
+			config: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoints = []string{"without_scheme"}
 			}),
 			err: `invalid endpoint "without_scheme": invalid scheme "", expected "http" or "https"`,
 		},
 		"compression unsupported": {
-			config: withDefaultConfig(func(cfg *Config) {
+			config: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoints = []string{"http://test:9200"}
 				cfg.Compression = configcompression.TypeSnappy
 			}),
 			err: `compression must be one of [none, gzip]`,
 		},
 		"both max_retries and max_requests specified": {
-			config: withDefaultConfig(func(cfg *Config) {
+			config: WithDefaultConfig(func(cfg *Config) {
 				cfg.Endpoints = []string{"http://test:9200"}
 				cfg.Retry.MaxRetries = 1
 				cfg.Retry.MaxRequests = 1
@@ -437,30 +436,14 @@ func TestConfig_Validate(t *testing.T) {
 func TestConfig_Validate_Environment(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		t.Setenv("ELASTICSEARCH_URL", "http://test:9200")
-		config := withDefaultConfig()
+		config := WithDefaultConfig()
 		err := component.ValidateConfig(config)
 		require.NoError(t, err)
 	})
 	t.Run("invalid", func(t *testing.T) {
 		t.Setenv("ELASTICSEARCH_URL", "http://valid:9200, *:!")
-		config := withDefaultConfig()
+		config := WithDefaultConfig()
 		err := component.ValidateConfig(config)
 		assert.EqualError(t, err, `invalid endpoint "*:!": parse "*:!": first path segment in URL cannot contain colon`)
 	})
-}
-
-func withDefaultConfig(fns ...func(*Config)) *Config {
-	cfg := createDefaultConfig().(*Config)
-	for _, fn := range fns {
-		fn(cfg)
-	}
-	return cfg
-}
-
-func withDefaultHTTPClientConfig(fns ...func(config *confighttp.ClientConfig)) confighttp.ClientConfig {
-	cfg := confighttp.NewDefaultClientConfig()
-	for _, fn := range fns {
-		fn(&cfg)
-	}
-	return cfg
 }

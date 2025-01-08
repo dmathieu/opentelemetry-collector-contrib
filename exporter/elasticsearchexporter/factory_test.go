@@ -13,6 +13,8 @@ import (
 	"go.opentelemetry.io/collector/exporter/exportertest"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/config"
 )
 
 func TestCreateDefaultConfig(t *testing.T) {
@@ -24,7 +26,7 @@ func TestCreateDefaultConfig(t *testing.T) {
 
 func TestFactory_CreateLogs(t *testing.T) {
 	factory := NewFactory()
-	cfg := withDefaultConfig(func(cfg *Config) {
+	cfg := config.WithDefaultConfig(func(cfg *config.Config) {
 		cfg.Endpoints = []string{"http://test:9200"}
 	})
 	params := exportertest.NewNopSettings()
@@ -37,7 +39,7 @@ func TestFactory_CreateLogs(t *testing.T) {
 
 func TestFactory_CreateMetrics(t *testing.T) {
 	factory := NewFactory()
-	cfg := withDefaultConfig(func(cfg *Config) {
+	cfg := config.WithDefaultConfig(func(cfg *config.Config) {
 		cfg.Endpoints = []string{"http://test:9200"}
 	})
 	params := exportertest.NewNopSettings()
@@ -50,7 +52,7 @@ func TestFactory_CreateMetrics(t *testing.T) {
 
 func TestFactory_CreateTraces(t *testing.T) {
 	factory := NewFactory()
-	cfg := withDefaultConfig(func(cfg *Config) {
+	cfg := config.WithDefaultConfig(func(cfg *config.Config) {
 		cfg.Endpoints = []string{"http://test:9200"}
 	})
 	params := exportertest.NewNopSettings()
@@ -63,7 +65,7 @@ func TestFactory_CreateTraces(t *testing.T) {
 
 func TestFactory_CreateLogsAndTracesExporterWithDeprecatedIndexOption(t *testing.T) {
 	factory := NewFactory()
-	cfg := withDefaultConfig(func(cfg *Config) {
+	cfg := config.WithDefaultConfig(func(cfg *config.Config) {
 		cfg.Endpoints = []string{"http://test:9200"}
 		cfg.Index = "test_index"
 	})
@@ -81,7 +83,7 @@ func TestFactory_CreateLogsAndTracesExporterWithDeprecatedIndexOption(t *testing
 
 func TestFactory_DedupDeprecated(t *testing.T) {
 	factory := NewFactory()
-	cfg := withDefaultConfig(func(cfg *Config) {
+	cfg := config.WithDefaultConfig(func(cfg *config.Config) {
 		dedup := false
 		cfg.Endpoint = "http://testing.invalid:9200"
 		cfg.Mapping.Dedup = &dedup
@@ -116,19 +118,19 @@ func TestFactory_DedotDeprecated(t *testing.T) {
 	set := exportertest.NewNopSettings()
 	set.Logger = zap.New(loggerCore)
 
-	cfgNoDedotECS := withDefaultConfig(func(cfg *Config) {
+	cfgNoDedotECS := config.WithDefaultConfig(func(cfg *config.Config) {
 		cfg.Endpoint = "http://testing.invalid:9200"
 		cfg.Mapping.Dedot = false
 		cfg.Mapping.Mode = "ecs"
 	})
 
-	cfgDedotRaw := withDefaultConfig(func(cfg *Config) {
+	cfgDedotRaw := config.WithDefaultConfig(func(cfg *config.Config) {
 		cfg.Endpoint = "http://testing.invalid:9200"
 		cfg.Mapping.Dedot = true
 		cfg.Mapping.Mode = "raw"
 	})
 
-	for _, cfg := range []*Config{cfgNoDedotECS, cfgDedotRaw} {
+	for _, cfg := range []*config.Config{cfgNoDedotECS, cfgDedotRaw} {
 		factory := NewFactory()
 		logsExporter, err := factory.CreateLogs(context.Background(), set, cfg)
 		require.NoError(t, err)

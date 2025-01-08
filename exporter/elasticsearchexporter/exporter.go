@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.uber.org/zap"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/config"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/objmodel"
 )
 
@@ -27,9 +28,9 @@ type elasticsearchExporter struct {
 	component.TelemetrySettings
 	userAgent string
 
-	config         *Config
+	config         *config.Config
 	index          string
-	logstashFormat LogstashFormatSettings
+	logstashFormat config.LogstashFormatSettings
 	dynamicIndex   bool
 	model          mappingModel
 	otel           bool
@@ -39,7 +40,7 @@ type elasticsearchExporter struct {
 }
 
 func newExporter(
-	cfg *Config,
+	cfg *config.Config,
 	set exporter.Settings,
 	index string,
 	dynamicIndex bool,
@@ -49,7 +50,7 @@ func newExporter(
 		mode:  cfg.MappingMode(),
 	}
 
-	otel := model.mode == MappingOTel
+	otel := model.mode == config.MappingOTel
 
 	userAgent := fmt.Sprintf(
 		"%s/%s (%s/%s)",

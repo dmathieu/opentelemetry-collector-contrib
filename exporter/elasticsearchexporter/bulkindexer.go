@@ -18,6 +18,8 @@ import (
 	"github.com/elastic/go-elasticsearch/v7"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.uber.org/zap"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/config"
 )
 
 type bulkIndexer interface {
@@ -55,41 +57,41 @@ type bulkIndexerSession interface {
 
 const defaultMaxRetries = 2
 
-func newBulkIndexer(logger *zap.Logger, client *elasticsearch.Client, config *Config) (bulkIndexer, error) {
-	if config.Batcher.Enabled != nil {
-		return newSyncBulkIndexer(logger, client, config), nil
+func newBulkIndexer(logger *zap.Logger, client *elasticsearch.Client, cfg *config.Config) (bulkIndexer, error) {
+	if cfg.Batcher.Enabled != nil {
+		return newSyncBulkIndexer(logger, client, cfg), nil
 	}
-	return newAsyncBulkIndexer(logger, client, config)
+	return newAsyncBulkIndexer(logger, client, cfg)
 }
 
-func bulkIndexerConfig(client *elasticsearch.Client, config *Config) docappender.BulkIndexerConfig {
+func bulkIndexerConfig(client *elasticsearch.Client, cfg *config.Config) docappender.BulkIndexerConfig {
 	var maxDocRetries int
-	if config.Retry.Enabled {
+	if cfg.Retry.Enabled {
 		maxDocRetries = defaultMaxRetries
-		if config.Retry.MaxRetries != 0 {
-			maxDocRetries = config.Retry.MaxRetries
+		if cfg.Retry.MaxRetries != 0 {
+			maxDocRetries = cfg.Retry.MaxRetries
 		}
 	}
 	var compressionLevel int
-	if config.Compression == configcompression.TypeGzip {
+	if cfg.Compression == configcompression.TypeGzip {
 		compressionLevel = gzip.BestSpeed
 	}
 	return docappender.BulkIndexerConfig{
 		Client:                client,
 		MaxDocumentRetries:    maxDocRetries,
-		Pipeline:              config.Pipeline,
-		RetryOnDocumentStatus: config.Retry.RetryOnStatus,
-		RequireDataStream:     config.MappingMode() == MappingOTel,
+		Pipeline:              cfg.Pipeline,
+		RetryOnDocumentStatus: cfg.Retry.RetryOnStatus,
+		RequireDataStream:     cfg.MappingMode() == config.MappingOTel,
 		CompressionLevel:      compressionLevel,
 	}
 }
 
-func newSyncBulkIndexer(logger *zap.Logger, client *elasticsearch.Client, config *Config) *syncBulkIndexer {
+func newSyncBulkIndexer(logger *zap.Logger, client *elasticsearch.Client, cfg *config.Config) *syncBulkIndexer {
 	return &syncBulkIndexer{
-		config:       bulkIndexerConfig(client, config),
-		flushTimeout: config.Timeout,
-		flushBytes:   config.Flush.Bytes,
-		retryConfig:  config.Retry,
+		config:       bulkIndexerConfig(client, cfg),
+		flushTimeout: cfg.Timeout,
+		flushBytes:   cfg.Flush.Bytes,
+		retryConfig:  cfg.Retry,
 		logger:       logger,
 	}
 }
@@ -98,7 +100,7 @@ type syncBulkIndexer struct {
 	config       docappender.BulkIndexerConfig
 	flushTimeout time.Duration
 	flushBytes   int
-	retryConfig  RetrySettings
+	retryConfig  config.RetrySettings
 	logger       *zap.Logger
 }
 
@@ -175,30 +177,30 @@ func (s *syncBulkIndexerSession) Flush(ctx context.Context) error {
 	}
 }
 
-func newAsyncBulkIndexer(logger *zap.Logger, client *elasticsearch.Client, config *Config) (*asyncBulkIndexer, error) {
-	numWorkers := config.NumWorkers
+func newAsyncBulkIndexer(logger *zap.Logger, client *elasticsearch.Client, cfg *config.Config) (*asyncBulkIndexer, error) {
+	numWorkers := cfg.NumWorkers
 	if numWorkers == 0 {
 		numWorkers = runtime.NumCPU()
 	}
 
 	pool := &asyncBulkIndexer{
 		wg:    sync.WaitGroup{},
-		items: make(chan docappender.BulkIndexerItem, config.NumWorkers),
+		items: make(chan docappender.BulkIndexerItem, cfg.NumWorkers),
 		stats: bulkIndexerStats{},
 	}
 	pool.wg.Add(numWorkers)
 
 	for i := 0; i < numWorkers; i++ {
-		bi, err := docappender.NewBulkIndexer(bulkIndexerConfig(client, config))
+		bi, err := docappender.NewBulkIndexer(bulkIndexerConfig(client, cfg))
 		if err != nil {
 			return nil, err
 		}
 		w := asyncBulkIndexerWorker{
 			indexer:       bi,
 			items:         pool.items,
-			flushInterval: config.Flush.Interval,
-			flushTimeout:  config.Timeout,
-			flushBytes:    config.Flush.Bytes,
+			flushInterval: cfg.Flush.Interval,
+			flushTimeout:  cfg.Timeout,
+			flushBytes:    cfg.Flush.Bytes,
 			logger:        logger,
 			stats:         &pool.stats,
 		}

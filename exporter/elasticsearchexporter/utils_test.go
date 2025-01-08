@@ -23,6 +23,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/config"
 )
 
 type itemRequest struct {
@@ -320,7 +322,7 @@ func fillAttributeMap(attrs pcommon.Map, m map[string]any) {
 }
 
 func TestGetSuffixTime(t *testing.T) {
-	defaultCfg := createDefaultConfig().(*Config)
+	defaultCfg := config.CreateDefaultConfig().(*config.Config)
 	defaultCfg.LogstashFormat.Enabled = true
 	testTime := time.Date(2023, 12, 2, 10, 10, 10, 1, time.UTC)
 	index, err := generateIndexWithLogstashFormat(defaultCfg.LogsIndex, &defaultCfg.LogstashFormat, testTime)

@@ -20,6 +20,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/config"
 )
 
 var defaultRoundTripFunc = func(*http.Request) (*http.Response, error) {
@@ -53,7 +55,7 @@ const successResp = `{
 }`
 
 func TestAsyncBulkIndexer_flushOnClose(t *testing.T) {
-	cfg := Config{NumWorkers: 1, Flush: FlushSettings{Interval: time.Hour, Bytes: 2 << 30}}
+	cfg := config.Config{NumWorkers: 1, Flush: config.FlushSettings{Interval: time.Hour, Bytes: 2 << 30}}
 	client, err := elasticsearch.NewClient(elasticsearch.Config{Transport: &mockTransport{
 		RoundTripFunc: func(*http.Request) (*http.Response, error) {
 			return &http.Response{
@@ -72,15 +74,15 @@ func TestAsyncBulkIndexer_flushOnClose(t *testing.T) {
 func TestAsyncBulkIndexer_flush(t *testing.T) {
 	tests := []struct {
 		name   string
-		config Config
+		config config.Config
 	}{
 		{
 			name:   "flush.bytes",
-			config: Config{NumWorkers: 1, Flush: FlushSettings{Interval: time.Hour, Bytes: 1}},
+			config: config.Config{NumWorkers: 1, Flush: config.FlushSettings{Interval: time.Hour, Bytes: 1}},
 		},
 		{
 			name:   "flush.interval",
-			config: Config{NumWorkers: 1, Flush: FlushSettings{Interval: 50 * time.Millisecond, Bytes: 2 << 30}},
+			config: config.Config{NumWorkers: 1, Flush: config.FlushSettings{Interval: 50 * time.Millisecond, Bytes: 2 << 30}},
 		},
 	}
 
@@ -114,24 +116,24 @@ func TestAsyncBulkIndexer_flush(t *testing.T) {
 func TestAsyncBulkIndexer_requireDataStream(t *testing.T) {
 	tests := []struct {
 		name                  string
-		config                Config
+		config                config.Config
 		wantRequireDataStream bool
 	}{
 		{
 			name: "ecs",
-			config: Config{
+			config: config.Config{
 				NumWorkers: 1,
-				Mapping:    MappingsSettings{Mode: MappingECS.String()},
-				Flush:      FlushSettings{Interval: time.Hour, Bytes: 1e+8},
+				Mapping:    config.MappingsSettings{Mode: config.MappingECS.String()},
+				Flush:      config.FlushSettings{Interval: time.Hour, Bytes: 1e+8},
 			},
 			wantRequireDataStream: false,
 		},
 		{
 			name: "otel",
-			config: Config{
+			config: config.Config{
 				NumWorkers: 1,
-				Mapping:    MappingsSettings{Mode: MappingOTel.String()},
-				Flush:      FlushSettings{Interval: time.Hour, Bytes: 1e+8},
+				Mapping:    config.MappingsSettings{Mode: config.MappingOTel.String()},
+				Flush:      config.FlushSettings{Interval: time.Hour, Bytes: 1e+8},
 			},
 			wantRequireDataStream: true,
 		},
@@ -215,7 +217,7 @@ func TestAsyncBulkIndexer_flush_error(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			cfg := Config{NumWorkers: 1, Flush: FlushSettings{Interval: time.Hour, Bytes: 1}}
+			cfg := config.Config{NumWorkers: 1, Flush: config.FlushSettings{Interval: time.Hour, Bytes: 1}}
 			client, err := elasticsearch.NewClient(elasticsearch.Config{Transport: &mockTransport{
 				RoundTripFunc: tt.roundTripFunc,
 			}})
@@ -245,22 +247,22 @@ func TestAsyncBulkIndexer_flush_error(t *testing.T) {
 func TestAsyncBulkIndexer_logRoundTrip(t *testing.T) {
 	tests := []struct {
 		name   string
-		config Config
+		config config.Config
 	}{
 		{
 			name: "compression none",
-			config: Config{
+			config: config.Config{
 				NumWorkers:   1,
 				ClientConfig: confighttp.ClientConfig{Compression: "none"},
-				Flush:        FlushSettings{Interval: time.Hour, Bytes: 1e+8},
+				Flush:        config.FlushSettings{Interval: time.Hour, Bytes: 1e+8},
 			},
 		},
 		{
 			name: "compression gzip",
-			config: Config{
+			config: config.Config{
 				NumWorkers:   1,
 				ClientConfig: confighttp.ClientConfig{Compression: "gzip"},
-				Flush:        FlushSettings{Interval: time.Hour, Bytes: 1e+8},
+				Flush:        config.FlushSettings{Interval: time.Hour, Bytes: 1e+8},
 			},
 		},
 	}
@@ -306,8 +308,8 @@ func TestAsyncBulkIndexer_logRoundTrip(t *testing.T) {
 	}
 }
 
-func runBulkIndexerOnce(t *testing.T, config *Config, client *elasticsearch.Client) *asyncBulkIndexer {
-	bulkIndexer, err := newAsyncBulkIndexer(zap.NewNop(), client, config)
+func runBulkIndexerOnce(t *testing.T, cfg *config.Config, client *elasticsearch.Client) *asyncBulkIndexer {
+	bulkIndexer, err := newAsyncBulkIndexer(zap.NewNop(), client, cfg)
 	require.NoError(t, err)
 	session, err := bulkIndexer.StartSession(context.Background())
 	require.NoError(t, err)
@@ -320,7 +322,7 @@ func runBulkIndexerOnce(t *testing.T, config *Config, client *elasticsearch.Clie
 
 func TestSyncBulkIndexer_flushBytes(t *testing.T) {
 	var reqCnt atomic.Int64
-	cfg := Config{NumWorkers: 1, Flush: FlushSettings{Interval: time.Hour, Bytes: 1}}
+	cfg := config.Config{NumWorkers: 1, Flush: config.FlushSettings{Interval: time.Hour, Bytes: 1}}
 	client, err := elasticsearch.NewClient(elasticsearch.Config{Transport: &mockTransport{
 		RoundTripFunc: func(r *http.Request) (*http.Response, error) {
 			if r.URL.Path == "/_bulk" {

@@ -23,6 +23,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv "go.opentelemetry.io/collector/semconv/v1.22.0"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/config"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/exphistogram"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/objmodel"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/traceutil"
@@ -92,7 +93,7 @@ type mappingModel interface {
 // See: https://github.com/open-telemetry/oteps/blob/master/text/logs/0097-log-data-model.md
 type encodeModel struct {
 	dedot bool
-	mode  MappingMode
+	mode  config.MappingMode
 }
 
 type dataPoint interface {
@@ -114,20 +115,20 @@ const (
 func (m *encodeModel) encodeLog(resource pcommon.Resource, resourceSchemaURL string, record plog.LogRecord, scope pcommon.InstrumentationScope, scopeSchemaURL string) ([]byte, error) {
 	var document objmodel.Document
 	switch m.mode {
-	case MappingECS:
+	case config.MappingECS:
 		document = m.encodeLogECSMode(resource, record, scope)
-	case MappingOTel:
+	case config.MappingOTel:
 		document = m.encodeLogOTelMode(resource, resourceSchemaURL, record, scope, scopeSchemaURL)
-	case MappingBodyMap:
+	case config.MappingBodyMap:
 		return m.encodeLogBodyMapMode(record)
 	default:
 		document = m.encodeLogDefaultMode(resource, record, scope)
 	}
 	// For OTel mode, prefix conflicts are not a problem as otel-data has subobjects: false
-	document.Dedup(m.mode != MappingOTel)
+	document.Dedup(m.mode != config.MappingOTel)
 
 	var buf bytes.Buffer
-	err := document.Serialize(&buf, m.dedot, m.mode == MappingOTel)
+	err := document.Serialize(&buf, m.dedot, m.mode == config.MappingOTel)
 	return buf.Bytes(), err
 }
 
@@ -277,10 +278,10 @@ func (m *encodeModel) encodeLogECSMode(resource pcommon.Resource, record plog.Lo
 
 func (m *encodeModel) encodeDocument(document objmodel.Document) ([]byte, error) {
 	// For OTel mode, prefix conflicts are not a problem as otel-data has subobjects: false
-	document.Dedup(m.mode != MappingOTel)
+	document.Dedup(m.mode != config.MappingOTel)
 
 	var buf bytes.Buffer
-	err := document.Serialize(&buf, m.dedot, m.mode == MappingOTel)
+	err := document.Serialize(&buf, m.dedot, m.mode == config.MappingOTel)
 	if err != nil {
 		return nil, err
 	}
@@ -290,9 +291,9 @@ func (m *encodeModel) encodeDocument(document objmodel.Document) ([]byte, error)
 // upsertMetricDataPointValue upserts a datapoint value to documents which is already hashed by resource and index
 func (m *encodeModel) upsertMetricDataPointValue(documents map[uint32]objmodel.Document, resource pcommon.Resource, resourceSchemaURL string, scope pcommon.InstrumentationScope, scopeSchemaURL string, metric pmetric.Metric, dp dataPoint) error {
 	switch m.mode {
-	case MappingOTel:
+	case config.MappingOTel:
 		return m.upsertMetricDataPointValueOTelMode(documents, resource, resourceSchemaURL, scope, scopeSchemaURL, metric, dp)
-	case MappingECS:
+	case config.MappingECS:
 		return m.upsertMetricDataPointValueECSMode(documents, resource, resourceSchemaURL, scope, scopeSchemaURL, metric, dp)
 	default:
 		// Defaults to ECS for backward compatibility
@@ -653,15 +654,15 @@ func (m *encodeModel) encodeAttributesOTelMode(document *objmodel.Document, attr
 func (m *encodeModel) encodeSpan(resource pcommon.Resource, resourceSchemaURL string, span ptrace.Span, scope pcommon.InstrumentationScope, scopeSchemaURL string) ([]byte, error) {
 	var document objmodel.Document
 	switch m.mode {
-	case MappingOTel:
+	case config.MappingOTel:
 		document = m.encodeSpanOTelMode(resource, resourceSchemaURL, span, scope, scopeSchemaURL)
 	default:
 		document = m.encodeSpanDefaultMode(resource, span, scope)
 	}
 	// For OTel mode, prefix conflicts are not a problem as otel-data has subobjects: false
-	document.Dedup(m.mode != MappingOTel)
+	document.Dedup(m.mode != config.MappingOTel)
 	var buf bytes.Buffer
-	err := document.Serialize(&buf, m.dedot, m.mode == MappingOTel)
+	err := document.Serialize(&buf, m.dedot, m.mode == config.MappingOTel)
 	return buf.Bytes(), err
 }
 
@@ -727,7 +728,7 @@ func (m *encodeModel) encodeSpanDefaultMode(resource pcommon.Resource, span ptra
 }
 
 func (m *encodeModel) encodeSpanEvent(resource pcommon.Resource, resourceSchemaURL string, span ptrace.Span, spanEvent ptrace.SpanEvent, scope pcommon.InstrumentationScope, scopeSchemaURL string) *objmodel.Document {
-	if m.mode != MappingOTel {
+	if m.mode != config.MappingOTel {
 		// Currently span events are stored separately only in OTel mapping mode.
 		// In other modes, they are stored within the span document.
 		return nil
@@ -748,7 +749,7 @@ func (m *encodeModel) encodeSpanEvent(resource pcommon.Resource, resourceSchemaU
 
 func (m *encodeModel) encodeAttributes(document *objmodel.Document, attributes pcommon.Map) {
 	key := "Attributes"
-	if m.mode == MappingRaw {
+	if m.mode == config.MappingRaw {
 		key = ""
 	}
 	document.AddAttributes(key, attributes)
@@ -756,7 +757,7 @@ func (m *encodeModel) encodeAttributes(document *objmodel.Document, attributes p
 
 func (m *encodeModel) encodeEvents(document *objmodel.Document, events ptrace.SpanEventSlice) {
 	key := "Events"
-	if m.mode == MappingRaw {
+	if m.mode == config.MappingRaw {
 		key = ""
 	}
 	document.AddEvents(key, events)
