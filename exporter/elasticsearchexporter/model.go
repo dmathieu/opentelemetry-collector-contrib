@@ -23,6 +23,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv "go.opentelemetry.io/collector/semconv/v1.22.0"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/datastream"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/exphistogram"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/objmodel"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal/traceutil"
@@ -595,7 +596,7 @@ func (m *encodeModel) encodeResourceOTelMode(document *objmodel.Document, resour
 	resource.Attributes().CopyTo(resourceAttrMap)
 	resourceAttrMap.RemoveIf(func(key string, _ pcommon.Value) bool {
 		switch key {
-		case dataStreamType, dataStreamDataset, dataStreamNamespace:
+		case datastream.TypeKey, datastream.DatasetKey, datastream.NamespaceKey:
 			return true
 		}
 		return false
@@ -621,7 +622,7 @@ func (m *encodeModel) encodeScopeOTelMode(document *objmodel.Document, scope pco
 	scope.Attributes().CopyTo(scopeAttrMap)
 	scopeAttrMap.RemoveIf(func(key string, _ pcommon.Value) bool {
 		switch key {
-		case dataStreamType, dataStreamDataset, dataStreamNamespace:
+		case datastream.TypeKey, datastream.DatasetKey, datastream.NamespaceKey:
 			return true
 		}
 		return false
@@ -635,7 +636,7 @@ func (m *encodeModel) encodeAttributesOTelMode(document *objmodel.Document, attr
 	attributeMap.CopyTo(attrsCopy)
 	attrsCopy.RemoveIf(func(key string, val pcommon.Value) bool {
 		switch key {
-		case dataStreamType, dataStreamDataset, dataStreamNamespace:
+		case datastream.TypeKey, datastream.DatasetKey, datastream.NamespaceKey:
 			// At this point the data_stream attributes are expected to be in the record attributes,
 			// updated by the router.
 			// Move them to the top of the document and remove them from the record
@@ -945,7 +946,7 @@ func metricOTelHash(dp dataPoint, scopeAttrs pcommon.Map, unit string) uint32 {
 func mapHashExcludeReservedAttrs(hasher hash.Hash, m pcommon.Map, extra ...string) {
 	m.Range(func(k string, v pcommon.Value) bool {
 		switch k {
-		case dataStreamType, dataStreamDataset, dataStreamNamespace:
+		case datastream.TypeKey, datastream.DatasetKey, datastream.NamespaceKey:
 			return true
 		}
 		if slices.Contains(extra, k) {

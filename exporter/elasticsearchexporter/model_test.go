@@ -24,6 +24,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv "go.opentelemetry.io/collector/semconv/v1.22.0"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/datastream"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/objmodel"
 )
 
@@ -976,8 +977,8 @@ func decodeOTelID(data []byte) ([]byte, error) {
 
 func TestEncodeLogOtelMode(t *testing.T) {
 	randomString := strings.Repeat("abcdefghijklmnopqrstuvwxyz0123456789", 10)
-	maxLenNamespace := maxDataStreamBytes - len(disallowedNamespaceRunes)
-	maxLenDataset := maxDataStreamBytes - len(disallowedDatasetRunes) - len(".otel")
+	maxLenNamespace := datastream.MaxDataStreamBytes - len(datastream.DisallowedNamespaceRunes)
+	maxLenDataset := datastream.MaxDataStreamBytes - len(datastream.DisallowedDatasetRunes) - len(".otel")
 
 	tests := []struct {
 		name   string
@@ -1065,14 +1066,14 @@ func TestEncodeLogOtelMode(t *testing.T) {
 		{
 			name: "sanitize dataset/namespace",
 			rec: buildOTelRecordTestData(t, func(or OTelRecord) OTelRecord {
-				or.Attributes["data_stream.dataset"] = disallowedDatasetRunes + randomString
-				or.Attributes["data_stream.namespace"] = disallowedNamespaceRunes + randomString
+				or.Attributes["data_stream.dataset"] = datastream.DisallowedDatasetRunes + randomString
+				or.Attributes["data_stream.namespace"] = datastream.DisallowedNamespaceRunes + randomString
 				return or
 			}),
 			wantFn: func(or OTelRecord) OTelRecord {
 				deleteDatasetAttributes(or)
-				ds := strings.Repeat("_", len(disallowedDatasetRunes)) + randomString[:maxLenDataset] + ".otel"
-				ns := strings.Repeat("_", len(disallowedNamespaceRunes)) + randomString[:maxLenNamespace]
+				ds := strings.Repeat("_", len(datastream.DisallowedDatasetRunes)) + randomString[:maxLenDataset] + ".otel"
+				ns := strings.Repeat("_", len(datastream.DisallowedNamespaceRunes)) + randomString[:maxLenNamespace]
 				return assignDatastreamData(or, "", ds, ns)
 			},
 		},
@@ -1087,7 +1088,7 @@ func TestEncodeLogOtelMode(t *testing.T) {
 		record, scope, resource := createTestOTelLogRecord(t, tc.rec)
 
 		// This sets the data_stream values default or derived from the record/scope/resources
-		routeLogRecord(record.Attributes(), scope.Attributes(), resource.Attributes(), "", true, scope.Name())
+		datastream.RouteLogRecord(record.Attributes(), scope.Attributes(), resource.Attributes(), "", true, scope.Name())
 
 		b, err := m.encodeLog(resource, tc.rec.Resource.SchemaURL, record, scope, tc.rec.Scope.SchemaURL)
 		require.NoError(t, err)

@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.uber.org/zap"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/datastream"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter/internal/objmodel"
 )
 
@@ -162,7 +163,7 @@ func (e *elasticsearchExporter) pushLogRecord(
 ) error {
 	fIndex := e.index
 	if e.dynamicIndex {
-		fIndex = routeLogRecord(record.Attributes(), scope.Attributes(), resource.Attributes(), fIndex, e.otel, scope.Name())
+		fIndex = datastream.RouteLogRecord(record.Attributes(), scope.Attributes(), resource.Attributes(), fIndex, e.otel, scope.Name())
 	}
 
 	if e.logstashFormat.Enabled {
@@ -326,7 +327,7 @@ func (e *elasticsearchExporter) getMetricDataPointIndex(
 ) (string, error) {
 	fIndex := e.index
 	if e.dynamicIndex {
-		fIndex = routeDataPoint(dataPoint.Attributes(), scope.Attributes(), resource.Attributes(), fIndex, e.otel, scope.Name())
+		fIndex = datastream.RouteDataPoint(dataPoint.Attributes(), scope.Attributes(), resource.Attributes(), fIndex, e.otel, scope.Name())
 	}
 
 	if e.logstashFormat.Enabled {
@@ -400,7 +401,7 @@ func (e *elasticsearchExporter) pushTraceRecord(
 ) error {
 	fIndex := e.index
 	if e.dynamicIndex {
-		fIndex = routeSpan(span.Attributes(), scope.Attributes(), resource.Attributes(), fIndex, e.otel, span.Name())
+		fIndex = datastream.RouteSpan(span.Attributes(), scope.Attributes(), resource.Attributes(), fIndex, e.otel, span.Name())
 	}
 
 	if e.logstashFormat.Enabled {
@@ -430,7 +431,7 @@ func (e *elasticsearchExporter) pushSpanEvent(
 ) error {
 	fIndex := e.index
 	if e.dynamicIndex {
-		fIndex = routeSpanEvent(spanEvent.Attributes(), scope.Attributes(), resource.Attributes(), fIndex, e.otel, scope.Name())
+		fIndex = datastream.RouteSpanEvent(spanEvent.Attributes(), scope.Attributes(), resource.Attributes(), fIndex, e.otel, scope.Name())
 	}
 
 	if e.logstashFormat.Enabled {
